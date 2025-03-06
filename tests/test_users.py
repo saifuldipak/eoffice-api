@@ -138,3 +138,13 @@ def test_create_group_access(client, group_data, access_type_data):
     data = response.json()
     assert "group_id" in data
     assert "access_type_id" in data
+
+def test_create_user_with_invalid_role(client, user_data):
+    # Modify user data with an invalid role
+    user_data["role"] = "INVALID_ROLE"
+    
+    response = client.post("/users", json=user_data)
+    assert response.status_code == 422
+    data = response.json()
+    assert data["detail"][0]["msg"].startswith("Input should be")
+    
