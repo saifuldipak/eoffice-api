@@ -3,12 +3,19 @@ from datetime import datetime
 from sqlmodel import create_engine
 import bcrypt
 from sqlalchemy import UniqueConstraint
+from enum import Enum
+
+class UserRole(str, Enum):
+    USER_ADMIN = "user_admin"
+    TICKET_MANAGER = "ticket_manager"
+    TICKET_UPDATER = "ticket_updater"
 
 class UserBase(SQLModel):
     username: str = Field(sa_column_kwargs={"unique": True})
     first_name: str
     last_name: str
     email: str = Field(sa_column_kwargs={"unique": True})
+    role: UserRole
 
 class UserCreate(UserBase):
     password: str
@@ -16,7 +23,6 @@ class UserCreate(UserBase):
 class Users(UserCreate, table=True):
     id: int | None = Field(default=None, primary_key=True)
     is_active: bool
-    group_id: int | None = Field(default=None, foreign_key="groups.id")
     created_at: datetime
     updated_at: datetime
 
@@ -25,42 +31,8 @@ class Users(UserCreate, table=True):
 class UserInfo(UserBase):
     id: int
     is_active: bool
-    group_id: int | None
     created_at: datetime
     updated_at: datetime  
-
-class GroupCreate(SQLModel):
-    name: str = Field(sa_column_kwargs={"unique": True})
-    description: str | None = None
-
-class Groups(GroupCreate, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    created_at: datetime
-    updated_at: datetime
-
-class GroupInfo(GroupCreate):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-
-class AccessTypeCreate(SQLModel):
-    type: str = Field(sa_column_kwargs={"unique": True})
-    description: str | None = None
-
-class AccessTypes(AccessTypeCreate, table=True):
-    __tablename__ = "access_types"
-    id: int | None = Field(default=None, primary_key=True)
-
-class AccessTypeInfo(AccessTypeCreate):
-    id: int
-
-class GroupAccess(SQLModel, table=True):
-    group_id: int = Field(primary_key=True, foreign_key="groups.id")
-    access_type_id: int = Field(primary_key=True, foreign_key="access_types.id")
-
-class GroupAccessInfo(SQLModel):
-    group_name: str
-    access_type: str
     
 def create_db_connection():
     db_url = f"sqlite:///./eoffice.db"

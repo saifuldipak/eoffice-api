@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Depends, APIRouter
 from sqlmodel import Session, select
-from src.models import Users, UserCreate, UserInfo, GroupCreate, Groups, GroupInfo, AccessTypeCreate, AccessTypes, AccessTypeInfo, GroupAccess, GroupAccessInfo
+from src.models import Users, UserCreate, UserInfo
 import bcrypt
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
@@ -25,6 +25,7 @@ async def create_user(user: UserCreate, session: Session = Depends(get_session))
         first_name=user.first_name,
         last_name=user.last_name,
         email=user.email,
+        role=user.role,
         is_active=True,
         created_at=datetime.now(),
         updated_at=datetime.now()
@@ -47,7 +48,7 @@ async def get_user_by_username(username: str, session: Session = Depends(get_ses
         raise HTTPException(status_code=404, detail="User not found")
     return result
 
-@router.post("/groups", response_model=GroupInfo)
+""" @router.post("/groups", response_model=GroupInfo)
 async def create_group(group: GroupCreate, session: Session = Depends(get_session)):
     db_group = Groups(
         name=group.name, 
@@ -106,4 +107,4 @@ async def create_group_access(group_access: GroupAccessInfo, session: Session = 
         session.rollback()
         logger.error(f"IntegrityError: {e}")
         raise HTTPException(status_code=400, detail="Group access with this group name and access type already exists")
-    return db_group_access
+    return db_group_access """

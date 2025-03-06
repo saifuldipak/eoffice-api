@@ -30,7 +30,8 @@ def user_data():
         "password": "testpassword",
         "first_name": "Test",
         "last_name": "User",
-        "email": "testuser@example.com"
+        "email": "testuser@example.com",
+        "role": "user_admin"
     }
 
 @pytest.fixture

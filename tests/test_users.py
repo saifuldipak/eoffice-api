@@ -50,6 +50,7 @@ def test_get_user_by_username(client, user_data):
     assert data["first_name"] == user_data["first_name"]
     assert data["last_name"] == user_data["last_name"]
     assert data["email"] == user_data["email"]
+    assert data["role"] == user_data["role"]
     assert "id" in data
     assert "created_at" in data
     assert "updated_at" in data
