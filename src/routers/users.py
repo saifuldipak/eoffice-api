@@ -6,6 +6,7 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from src.dependency import get_session
 import logging
+from src.auth import get_user_admin
 
 # Configure logging
 logging.basicConfig(level=logging.ERROR)
@@ -13,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/users",
-    tags=["users"]
+    tags=["users"],
+    dependencies=[Depends(get_user_admin)]
 )
 
 @router.post("/", response_model=UserInfo)
