@@ -50,6 +50,26 @@ async def get_user_by_username(username: str, session: Session = Depends(get_ses
         raise HTTPException(status_code=404, detail="User not found")
     return result
 
+@router.delete("/{username}")
+async def delete_user(username: str, session: Session = Depends(get_session)):
+    statement = select(Users).where(Users.username == username)
+    db_user = session.exec(statement).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    try:
+        session.delete(db_user)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error deleting user: {e}")
+        raise HTTPException(status_code=500, detail="Error occurred while deleting user")
+    
+    return {"message": f"User {username} successfully deleted"}
+
+
+
+
 """ @router.post("/groups", response_model=GroupInfo)
 async def create_group(group: GroupCreate, session: Session = Depends(get_session)):
     db_group = Groups(
@@ -110,3 +130,4 @@ async def create_group_access(group_access: GroupAccessInfo, session: Session = 
         logger.error(f"IntegrityError: {e}")
         raise HTTPException(status_code=400, detail="Group access with this group name and access type already exists")
     return db_group_access """
+
