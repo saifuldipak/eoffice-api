@@ -85,3 +85,61 @@ def test_delete_nonexistent_user(client, auth_headers):
     data = response.json()
     assert data["detail"] == "User not found"
 
+def test_update_user(client, user_data, auth_headers):
+    # Create a user first
+    response = client.post("/users", json=user_data, headers=auth_headers)
+    assert response.status_code == 200
+
+    # Update the user
+    username = user_data["username"]
+    update_data = {
+        "first_name": "Updated First",
+        "last_name": "Updated Last",
+        "email": "updated@example.com"
+    }
+    response = client.patch(f"/users/{username}", json=update_data, headers=auth_headers)
+    assert response.status_code == 200
+    
+    data = response.json()
+    assert data["first_name"] == update_data["first_name"]
+    assert data["last_name"] == update_data["last_name"]
+    assert data["email"] == update_data["email"]
+    assert data["username"] == username  # username should not change
+    assert "updated_at" in data
+
+def test_update_nonexistent_user(client, auth_headers):
+    update_data = {"first_name": "New Name"}
+    response = client.patch("/users/nonexistentuser", json=update_data, headers=auth_headers)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "User not found"
+
+def test_update_user_no_data(client, user_data, auth_headers):
+    # Create a user first
+    response = client.post("/users", json=user_data, headers=auth_headers)
+    assert response.status_code == 200
+
+    # Attempt to update with empty data
+    username = user_data["username"]
+    response = client.patch(f"/users/{username}", json={}, headers=auth_headers)
+    assert response.status_code == 400
+    assert response.json()["detail"] == "No valid fields to update"
+
+def test_update_user_duplicate_email(client, user_data, auth_headers):
+    # Create first user
+    response = client.post("/users", json=user_data, headers=auth_headers)
+    assert response.status_code == 200
+
+    # Create second user
+    second_user = user_data.copy()
+    second_user["username"] = "seconduser"
+    second_user["email"] = "second@example.com"
+    response = client.post("/users", json=second_user, headers=auth_headers)
+    assert response.status_code == 200
+
+    # Try to update second user with first user's email
+    update_data = {"email": user_data["email"]}
+    response = client.patch(f"/users/{second_user['username']}", 
+                          json=update_data, 
+                          headers=auth_headers)
+    assert response.status_code == 400
+    assert response.json()["detail"] == "User with this email already exists"
