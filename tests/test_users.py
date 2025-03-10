@@ -61,3 +61,27 @@ def test_get_nonexistent_user(client, auth_headers):
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == "User not found"
+
+def test_delete_user(client, user_data, auth_headers):
+    # Create a user first
+    response = client.post("/users", json=user_data, headers=auth_headers)
+    assert response.status_code == 200
+
+    # Delete the user
+    username = user_data["username"]
+    response = client.delete(f"/users/{username}", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["message"] == f"User {username} successfully deleted"
+
+    # Verify user no longer exists
+    response = client.get(f"/users/{username}", headers=auth_headers)
+    assert response.status_code == 404
+
+def test_delete_nonexistent_user(client, auth_headers):
+    # Attempt to delete a user that does not exist
+    response = client.delete("/users/nonexistentuser", headers=auth_headers)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == "User not found"
+
