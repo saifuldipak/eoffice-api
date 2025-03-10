@@ -60,6 +60,7 @@ def create_admin_user():
         last_name='User',
         email='admin@eoffice',
         is_active=True,
+        role='user_admin',
         created_at=datetime.now(),
         updated_at=datetime.now()
     )
