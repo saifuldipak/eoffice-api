@@ -32,7 +32,15 @@ class UserInfo(UserBase):
     id: int
     is_active: bool
     created_at: datetime
-    updated_at: datetime  
+    updated_at: datetime 
+
+class UserUpdate(SQLModel):
+    first_name: str | None = None
+    last_name: str | None = None
+    email: str | None = None
+    role: UserRole | None = None
+    password: str | None = None
+    is_active: bool | None = None
     
 def create_db_connection():
     db_url = f"sqlite:///./eoffice.db"

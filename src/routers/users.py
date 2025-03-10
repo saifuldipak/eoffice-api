@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Depends, APIRouter
 from sqlmodel import Session, select
-from src.models import Users, UserCreate, UserInfo
+from src.models import Users, UserCreate, UserInfo, UserUpdate
 import bcrypt
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
@@ -67,7 +67,48 @@ async def delete_user(username: str, session: Session = Depends(get_session)):
     
     return {"message": f"User {username} successfully deleted"}
 
-
+@router.patch("/{username}", response_model=UserInfo)
+async def update_user(
+    username: str, 
+    user_update: UserUpdate, 
+    session: Session = Depends(get_session)
+):
+    statement = select(Users).where(Users.username == username)
+    db_user = session.exec(statement).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    update_data = user_update.model_dump(exclude_unset=True)
+    if not update_data:
+        raise HTTPException(
+            status_code=400, 
+            detail="No valid fields to update"
+        )
+    
+    try:
+        for field, value in update_data.items():
+            setattr(db_user, field, value)
+        db_user.updated_at = datetime.now()
+        
+        session.add(db_user)
+        session.commit()
+        session.refresh(db_user)
+    except IntegrityError as e:
+        session.rollback()
+        logger.error(f"IntegrityError: {e}")
+        raise HTTPException(
+            status_code=400, 
+            detail="User with this email already exists"
+        )
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error updating user: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail="Error occurred while updating user"
+        )
+    
+    return db_user
 
 
 """ @router.post("/groups", response_model=GroupInfo)
