@@ -44,7 +44,7 @@ class UserUpdate(SQLModel):
     
 def create_db_connection():
     db_url = f"sqlite:///./eoffice.db"
-    engine = create_engine(db_url, echo=True, connect_args={"check_same_thread": False})
+    engine = create_engine(db_url, echo=False, connect_args={"check_same_thread": False})
     return engine
 
 def recreate_tables(engine):
