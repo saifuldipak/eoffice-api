@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from src.dependency import get_session
 import logging
 from src.auth import get_user_admin
+from typing import List
 
 # Configure logging
 logging.basicConfig(level=logging.ERROR)
@@ -20,6 +21,16 @@ router = APIRouter(
 
 @router.post("/", response_model=UserInfo)
 async def create_user(user: UserCreate, session: Session = Depends(get_session)):
+    """
+    Create a new user. All the fields are required.
+
+    - **username**: The username of the user
+    - **password**: The password of the user
+    - **first_name**: The first name of the user
+    - **last_name**: The last name of the user
+    - **email**: The email of the user
+    - **role**: The role of the user, value should be 'ticket_manager', 'ticket_updater' or 'user_admin'
+    """
     hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     db_user = Users(
         username=user.username,
@@ -42,13 +53,13 @@ async def create_user(user: UserCreate, session: Session = Depends(get_session))
         raise HTTPException(status_code=400, detail="User with this username or email already exists")
     return db_user
 
-@router.get("/{username}", response_model=UserInfo)
+@router.get("/{username}", response_model=List[UserInfo])
 async def get_user_by_username(username: str, session: Session = Depends(get_session)):
-    statement = select(Users).where(Users.username == username)
-    result = session.exec(statement).first()
-    if not result:
-        raise HTTPException(status_code=404, detail="User not found")
-    return result
+    statement = select(Users).where(Users.username.like(f"%{username}%"))
+    results = session.exec(statement).all()
+    if not results:
+        raise HTTPException(status_code=404, detail="No users found")
+    return results
 
 @router.delete("/{username}")
 async def delete_user(username: str, session: Session = Depends(get_session)):
