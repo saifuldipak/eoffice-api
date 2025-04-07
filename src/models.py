@@ -1,3 +1,4 @@
+import os
 from sqlmodel import SQLModel, Field, create_engine, Session
 from datetime import datetime
 from sqlmodel import create_engine
@@ -43,7 +44,7 @@ class UserUpdate(SQLModel):
     is_active: bool | None = None
     
 def create_db_connection():
-    db_url = f"sqlite:///./eoffice.db"
+    db_url = os.environ.get("DATABASE_URL", "sqlite:///./eoffice.db")  # Use DATABASE_URL env var, default to sqlite
     engine = create_engine(db_url, echo=False, connect_args={"check_same_thread": False})
     return engine
 

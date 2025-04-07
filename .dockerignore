@@ -1,0 +1,19 @@
+# Ignore common files and directories
+**/__pycache__
+**/*.pyc
+*.egg-info/
+.venv/
+venv/
+.git/
+.gitignore
+Dockerfile
+docker-compose.yml
+
+
+# Ignore any local development files
+.env
+.DS_Store
+
+# Exclude any large or unnecessary files
+*.log
+data/
