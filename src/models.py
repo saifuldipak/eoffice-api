@@ -5,6 +5,10 @@ from sqlmodel import create_engine
 import bcrypt
 from sqlalchemy import UniqueConstraint
 from enum import Enum
+from dotenv import load_dotenv  # Import dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 class UserRole(str, Enum):
     USER_ADMIN = "user_admin"
@@ -44,7 +48,8 @@ class UserUpdate(SQLModel):
     is_active: bool | None = None
     
 def create_db_connection():
-    db_url = os.environ.get("DATABASE_URL", "sqlite:///./eoffice.db")  # Use DATABASE_URL env var, default to sqlite
+    # Load DATABASE_URL from .env file, default to sqlite if not set
+    db_url = os.getenv("DATABASE_URL", "sqlite:///./eoffice.db")
     engine = create_engine(db_url, echo=False, connect_args={"check_same_thread": False})
     return engine
 
