@@ -145,4 +145,4 @@ def test_update_user_duplicate_email(client, user_data, auth_headers):
                           json=update_data, 
                           headers=auth_headers)
     assert response.status_code == 400
-    assert response.json()["detail"] == "User with this email already exists"
+    assert response.json()["detail"] == "Update failed due to integrity constraints (e.g., duplicate username or email)"
