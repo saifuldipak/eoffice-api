@@ -1,8 +1,7 @@
 import os
+import bcrypt
 from sqlmodel import SQLModel, Field, create_engine, Session, text, Column, Integer, ForeignKey
 from datetime import datetime
-from sqlmodel import create_engine
-import bcrypt
 from sqlalchemy import UniqueConstraint
 from enum import Enum
 from dotenv import load_dotenv, find_dotenv  # Import dotenv
@@ -98,6 +97,42 @@ class UserUpdate(SQLModel):
     password: str | None = None
     is_active: bool | None = None
     team_id: int | None = None
+    
+class RequisitionStatus(str, Enum):
+    SUBMITTED = "submitted"
+    APPROVED = "approved"
+    DELIVERED = "delivered"    
+
+class RequisitionUnit(str, Enum):
+    PIECE = "piece"
+    PAIR = "pair"
+    METER = "meter"
+    GRAM = "gram"
+
+class Requisitions(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    status: RequisitionStatus
+    submission_date: datetime
+    approval_date: datetime | None = None
+    delivery_date: datetime | None = None
+
+class Items(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    item_name: str
+    brand: str | None = None
+    model: str | None = None
+
+class RequisitionItems(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    requisition_id: int = Field(foreign_key="requisition.id")
+    item_id: int = Field(foreign_key="items.id")
+    unit: RequisitionUnit
+    quantity: int
+    delivery_date: datetime | None = None
+    delivered_by: int | None = Field(foreign_key="users.id")
+
+# Load environment variables from .env file
+load_dotenv(override=True)
 
 def create_db_connection():
     # Load DATABASE_URL from .env file, default to sqlite if not set
