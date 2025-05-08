@@ -315,3 +315,26 @@ def update_item_type_in_db(session: Session, updated_item_type: ItemTypeInfo) ->
     except IntegrityError as e:
         session.rollback()
         raise e
+
+def delete_item_type_from_db(session: Session, type_id: int) -> None:
+    """
+    Delete an item type from the database by its ID.
+
+    Args:
+        session (Session): The database session.
+        type_id (int): The ID of the item type to delete.
+
+    Returns:
+        Optional[ItemTypes]: The deleted item type object if found and deleted, otherwise None.
+    """
+    statement = select(ItemTypes).where(ItemTypes.id == type_id)
+    db_item_type = session.exec(statement).first()
+    if db_item_type:
+        session.delete(db_item_type)
+        try:
+            session.commit()
+        except IntegrityError as e:
+            session.rollback()
+            raise e
+    
+    return None
