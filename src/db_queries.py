@@ -1,5 +1,5 @@
 from sqlmodel import Session, select
-from src.models import Users, Teams, TeamUpdate, UserCreate
+from src.models import Users, Teams, TeamUpdate, UserCreate, Items, ItemTypes
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from passlib.context import CryptContext
@@ -114,3 +114,43 @@ def delete_team_from_db(session: Session, team_name: str):
 def get_team_list_from_db(session: Session):
     statement = select(Teams)
     return session.exec(statement).all()
+
+def add_item_to_db(session: Session, item_data: Items):
+    """
+    Add a new item to the database.
+
+    Args:
+        session (Session): The database session.
+        item_data (Items): An instance of the Items class containing item details.
+
+    Returns:
+        Items: The newly created item object.
+    """
+    session.add(item_data)
+    try:
+        session.commit()
+        session.refresh(item_data)
+        return item_data
+    except IntegrityError as e:
+        session.rollback()
+        raise e
+
+def add_item_type_to_db(session: Session, db_item_type: ItemTypes):
+    """
+    Add a new item type to the database.
+
+    Args:
+        session (Session): The database session.
+        item_type_data (ItemTypes): An instance of the ItemTypes class containing item type details.
+
+    Returns:
+        ItemTypes: The newly created item type object.
+    """
+    session.add(db_item_type)
+    try:
+        session.commit()
+        session.refresh(db_item_type)
+        return db_item_type
+    except IntegrityError as e:
+        session.rollback()
+        raise e
