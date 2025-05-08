@@ -1,5 +1,5 @@
 from sqlmodel import Session, select
-from src.models import Users, Teams, TeamUpdate, UserCreate, RoleCreate, Roles, RolePermissions, RolePermissionCreate
+from src.models import Users, Teams, TeamUpdate, UserCreate, RoleCreate, Roles, RolePermissions, RolePermissionCreate, Items, ItemTypes
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from passlib.context import CryptContext
@@ -224,3 +224,42 @@ def get_all_role_permissions(session: Session) -> list[RolePermissions]:
 def get_role_permissions_by_role(session: Session, role_id: int) -> list[RolePermissions]:
     stmt = select(RolePermissions).where(RolePermissions.role_id == role_id)
     return list(session.exec(stmt).all())  # Explicitly convert to list
+def add_item_to_db(session: Session, item_data: Items):
+    """
+    Add a new item to the database.
+
+    Args:
+        session (Session): The database session.
+        item_data (Items): An instance of the Items class containing item details.
+
+    Returns:
+        Items: The newly created item object.
+    """
+    session.add(item_data)
+    try:
+        session.commit()
+        session.refresh(item_data)
+        return item_data
+    except IntegrityError as e:
+        session.rollback()
+        raise e
+
+def add_item_type_to_db(session: Session, db_item_type: ItemTypes):
+    """
+    Add a new item type to the database.
+
+    Args:
+        session (Session): The database session.
+        item_type_data (ItemTypes): An instance of the ItemTypes class containing item type details.
+
+    Returns:
+        ItemTypes: The newly created item type object.
+    """
+    session.add(db_item_type)
+    try:
+        session.commit()
+        session.refresh(db_item_type)
+        return db_item_type
+    except IntegrityError as e:
+        session.rollback()
+        raise e
