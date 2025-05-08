@@ -116,10 +116,34 @@ class Requisitions(SQLModel, table=True):
     approval_date: datetime | None = None
     delivery_date: datetime | None = None
 
+class ItemTypeBase(SQLModel):
+    item_type: str
+
+class ItemTypeCreate(ItemTypeBase):
+    pass
+
+class ItemTypes(ItemTypeBase, table=True):
+    __tablename__ = "item_types"
+    id: int | None = Field(default=None, primary_key=True) 
+    __table_args__ = (UniqueConstraint("item_type", name="uix_item_type"),)
+
+class ItemTypeInfo(ItemTypeBase):
+    id: int
+    
+class ItemBrands(SQLModel, table=True):
+    __tablename__ = "item_brands"
+    id: int | None = Field(default=None, primary_key=True)
+    item_brand: str | None = Field(sa_column_kwargs={"unique": True})
+
 class Items(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    item_name: str
-    brand: str | None = None
+    type: int = Field(foreign_key="item_types.id") 
+    brand: int | None = Field(default=None, foreign_key="item_brands.id")
+    model: str | None = Field(default=None, sa_column_kwargs={"unique": True})
+
+class CreateItem(SQLModel):
+    type: str
+    brand: int | None = None
     model: str | None = None
 
 class RequisitionItems(SQLModel, table=True):
