@@ -1,7 +1,7 @@
 import os
 from sqlmodel import SQLModel, Field, create_engine, Session, Column, ForeignKey
 from datetime import datetime
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, Column, ForeignKey, Integer
 from enum import Enum
 import os
 from datetime import datetime
@@ -105,7 +105,7 @@ class ItemBrands(SQLModel, table=True):
 class Items(SQLModel, table=True):
     __tablename__ = "items"
     id: int | None = Field(default=None, primary_key=True)
-    type: int = Field(foreign_key="item_types.id") 
+    type: int = Field(sa_column=Column(Integer, ForeignKey("item_types.id", ondelete="RESTRICT")))
     brand: int | None = Field(default=None, foreign_key="item_brands.id")
     model: str | None = Field(default=None, sa_column_kwargs={"unique": True})
 
