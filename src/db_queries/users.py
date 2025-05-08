@@ -3,6 +3,7 @@ from src.models import Users, Teams, TeamUpdate, UserCreate, RoleCreate, Roles, 
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from passlib.context import CryptContext
+from typing import Optional
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -18,6 +19,7 @@ def create_user_in_db(session: Session, user_data: UserCreate) -> Users:
     db_user.is_active = True
     db_user.created_at = datetime.now()
     db_user.updated_at = datetime.now()
+
 
     session.add(db_user)
     try:
@@ -256,6 +258,56 @@ def add_item_type_to_db(session: Session, db_item_type: ItemTypes):
         ItemTypes: The newly created item type object.
     """
     session.add(db_item_type)
+    try:
+        session.commit()
+        session.refresh(db_item_type)
+        return db_item_type
+    except IntegrityError as e:
+        session.rollback()
+        raise e
+
+def get_item_type_by_id(session: Session, type_id: int) -> Optional[ItemTypes]:
+    """
+    Retrieve an item type from the database by its ID.
+
+    Args:
+        session (Session): The database session.
+        type_id (int): The ID of the item type.
+
+    Returns:
+        Optional[ItemTypes]: The item type object if found, otherwise None.
+    """
+    try:
+        statement = select(ItemTypes).where(ItemTypes.id == type_id)
+        return session.exec(statement).first()
+    except IntegrityError as e:
+        session.rollback()
+        raise e
+
+def update_item_type_in_db(session: Session, updated_item_type: ItemTypeInfo) -> Optional[ItemTypes]:
+    """
+    Update an item type details using the provided ItemTypes object.
+
+    Args:
+        session (Session): The database session.
+        updated_item_type (ItemTypes): An instance of ItemTypes with updated details. The id attribute is used to find the record.
+
+    Returns:
+        Optional[ItemTypes]: The updated item type object, or None if the item type does not exist.
+    """
+    # Retrieve the existing record by id
+    statement = select(ItemTypes).where(ItemTypes.id == updated_item_type.id)
+    db_item_type = session.exec(statement).first()
+    if not db_item_type:
+        raise ValueError(f"ItemType with id {updated_item_type.id} does not exist.")
+
+    # Update the fields from the provided ItemTypes object
+    for key, value in updated_item_type.__dict__.items():
+        # Skip SQLModel internal attributes and primary key
+        if key.startswith("_") or key == "id":
+            continue
+        setattr(db_item_type, key, value)
+
     try:
         session.commit()
         session.refresh(db_item_type)
