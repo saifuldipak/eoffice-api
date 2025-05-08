@@ -133,3 +133,28 @@ def test_update_item_type_blank_json(client, auth_headers):
     # Ensure the error indicates that the required field is missing.
     assert any("field required" in err["msg"].lower() for err in data["detail"])
 
+
+def test_delete_item_type(client, auth_headers):
+    """
+    Test successfully deleting an existing item type.
+    """
+    # Create a valid item type first.
+    create_data = {"item_type": "Switch"}
+    response_create = client.post("/requisition/item-types/", json=create_data, headers=auth_headers)
+    assert response_create.status_code == 200
+    type_id = response_create.json()["id"]
+
+    # Delete the item type.
+    response_delete = client.delete(f"/requisition/item-types/{type_id}", headers=auth_headers)
+    assert response_delete.status_code == 200
+    data = response_delete.json()
+
+def test_delete_nonexistent_item_type(client, auth_headers):
+    """
+    Test deleting an item type that doesn't exist.
+    """
+    response_delete = client.delete("/requisition/item-types/9999", headers=auth_headers)
+    assert response_delete.status_code == 404
+    data = response_delete.json()
+    assert data["detail"] == "Item type not found"
+
