@@ -98,7 +98,7 @@ class UserUpdate(SQLModel):
     is_active: bool | None = None
     team_id: int | None = None
     
-class RequisitionStatus(str, Enum):
+""" class RequisitionStatus(str, Enum):
     SUBMITTED = "submitted"
     APPROVED = "approved"
     DELIVERED = "delivered"    
@@ -114,7 +114,7 @@ class Requisitions(SQLModel, table=True):
     status: RequisitionStatus
     submission_date: datetime
     approval_date: datetime | None = None
-    delivery_date: datetime | None = None
+    delivery_date: datetime | None = None """
 
 class ItemTypeBase(SQLModel):
     item_type: str
@@ -123,19 +123,27 @@ class ItemTypeCreate(ItemTypeBase):
     pass
 
 class ItemTypes(ItemTypeBase, table=True):
-    __tablename__ = "item_types"
     id: int | None = Field(default=None, primary_key=True) 
     __table_args__ = (UniqueConstraint("item_type", name="uix_item_type"),)
 
 class ItemTypeInfo(ItemTypeBase):
     id: int
-    
-class ItemBrands(SQLModel, table=True):
-    __tablename__ = "item_brands"
-    id: int | None = Field(default=None, primary_key=True)
-    item_brand: str | None = Field(sa_column_kwargs={"unique": True})
 
-class Items(SQLModel, table=True):
+class ItemBrandBase(SQLModel):
+    brand: str
+
+class ItemBrandCreate(ItemBrandBase):
+    pass
+
+class ItemBrands(ItemBrandBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    __table_args__ = (UniqueConstraint("brand", name="uix_brand"),)
+
+class ItemBrandInfo(ItemBrandBase):
+    id: int
+
+""" class Items(SQLModel, table=True):
+    __tablename__ = "items"
     id: int | None = Field(default=None, primary_key=True)
     type: int = Field(sa_column=Column(Integer, ForeignKey("item_types.id", ondelete="RESTRICT")))
     brand: int | None = Field(default=None, foreign_key="item_brands.id")
@@ -153,7 +161,7 @@ class RequisitionItems(SQLModel, table=True):
     unit: RequisitionUnit
     quantity: int
     delivery_date: datetime | None = None
-    delivered_by: int | None = Field(foreign_key="users.id")
+    delivered_by: int | None = Field(foreign_key="users.id") """
 
 # Load environment variables from .env file
 load_dotenv(override=True)
