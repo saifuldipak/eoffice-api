@@ -2,7 +2,11 @@ from sqlmodel import Session, select
 from src.models import Users, Teams, TeamUpdate, UserCreate, Items, ItemTypes, ItemTypeInfo
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
+<<<<<<< HEAD
 from passlib.context import CryptContext
+=======
+from src.models import ItemTypes, ItemTypeInfo, ItemBrands, ItemBrandInfo
+>>>>>>> 13a810c (Add item brands functionality with CRUD operations and corresponding tests)
 from typing import Optional
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -117,26 +121,6 @@ def get_team_list_from_db(session: Session):
     statement = select(Teams)
     return session.exec(statement).all()
 
-def add_item_to_db(session: Session, item_data: Items):
-    """
-    Add a new item to the database.
-
-    Args:
-        session (Session): The database session.
-        item_data (Items): An instance of the Items class containing item details.
-
-    Returns:
-        Items: The newly created item object.
-    """
-    session.add(item_data)
-    try:
-        session.commit()
-        session.refresh(item_data)
-        return item_data
-    except IntegrityError as e:
-        session.rollback()
-        raise e
-
 def add_item_type_to_db(session: Session, db_item_type: ItemTypes):
     """
     Add a new item type to the database.
@@ -228,4 +212,47 @@ def delete_item_type_from_db(session: Session, type_id: int) -> None:
             session.rollback()
             raise e
     
+    return None
+
+def add_item_brand_to_db(session: Session, item_brand: ItemBrands) -> ItemBrands:
+    session.add(item_brand)
+    try:
+        session.commit()
+        session.refresh(item_brand)
+        return item_brand
+    except IntegrityError as e:
+        session.rollback()
+        raise e
+
+def get_item_brand_by_id(session: Session, brand_id: int) -> Optional[ItemBrands]:
+    statement = select(ItemBrands).where(ItemBrands.id == brand_id)
+    return session.exec(statement).first()
+
+def update_item_brand_in_db(session: Session, updated_brand: ItemBrandInfo) -> Optional[ItemBrands]:
+    statement = select(ItemBrands).where(ItemBrands.id == updated_brand.id)
+    db_brand = session.exec(statement).first()
+    if not db_brand:
+        raise ValueError(f"ItemBrand with id {updated_brand.id} does not exist.")
+    for key, value in updated_brand.__dict__.items():
+        if key.startswith("_") or key == "id":
+            continue
+        setattr(db_brand, key, value)
+    try:
+        session.commit()
+        session.refresh(db_brand)
+        return db_brand
+    except IntegrityError as e:
+        session.rollback()
+        raise e
+
+def delete_item_brand_from_db(session: Session, brand_id: int) -> None:
+    statement = select(ItemBrands).where(ItemBrands.id == brand_id)
+    db_brand = session.exec(statement).first()
+    if db_brand:
+        session.delete(db_brand)
+        try:
+            session.commit()
+        except IntegrityError as e:
+            session.rollback()
+            raise e
     return None
