@@ -281,3 +281,160 @@ def test_delete_nonexistent_item_brand(client, auth_headers):
     data = response_delete.json()
     assert data["detail"] == "Item brand not found"
 
+def test_create_item_success(client, auth_headers, created_item_type, created_item_brand):
+    item_data = {
+        "type": created_item_type,
+        "brand": created_item_brand,
+        "model": "Model X"
+    }
+    response = client.post("/requisition/items/", json=item_data, headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["model"] == "Model X"
+    assert data["type"] == created_item_type
+    assert data["brand"] == created_item_brand
+    assert "id" in data
+
+def test_create_item_invalid_type(client, auth_headers, created_item_brand):
+    # Use an invalid type id (assumed not to exist)
+    item_data = {
+        "type": 9999,
+        "brand": created_item_brand,
+        "model": "Model Y"
+    }
+    response = client.post("/requisition/items/", json=item_data, headers=auth_headers)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Item type not found"
+
+def test_create_item_invalid_brand(client, auth_headers, created_item_type):
+    # Use an invalid brand id (assumed not to exist)
+    item_data = {
+        "type": created_item_type,
+        "brand": 9999,
+        "model": "Model Z"
+    }
+    response = client.post("/requisition/items/", json=item_data, headers=auth_headers)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Item brand not found"
+
+def test_get_item(client, auth_headers, created_item_type, created_item_brand):
+    # First, create an item.
+    item_data = {
+        "type": created_item_type,
+        "brand": created_item_brand,
+        "model": "Model Get"
+    }
+    create_response = client.post("/requisition/items/", json=item_data, headers=auth_headers)
+    assert create_response.status_code == 200
+    item_id = create_response.json()["id"]
+
+    # Now, retrieve the item
+    response = client.get(f"/requisition/items/{item_id}", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == item_id
+    assert data["model"] == "Model Get"
+
+def test_list_items(client, auth_headers, created_item_type, created_item_brand):
+    # Ensure there is at least one item.
+    item_data = {
+        "type": created_item_type,
+        "brand": created_item_brand,
+        "model": "Model List"
+    }
+    response_create = client.post("/requisition/items/", json=item_data, headers=auth_headers)
+    assert response_create.status_code == 200
+
+    # Get the list
+    response = client.get("/requisition/items/", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    matching_items = [item for item in data if item["model"] == "Model List"]
+    assert len(matching_items) >= 1
+
+def test_update_item_success(client, auth_headers, created_item_type, created_item_brand):
+    # Create an item.
+    item_data = {
+        "type": created_item_type,
+        "brand": created_item_brand,
+        "model": "Model Update Old"
+    }
+    create_response = client.post("/requisition/items/", json=item_data, headers=auth_headers)
+    assert create_response.status_code == 200
+    item_id = create_response.json()["id"]
+
+    # Update the item model.
+    update_data = {
+        "type": created_item_type,
+        "brand": created_item_brand,
+        "model": "Model Update New"
+    }
+    response = client.patch(f"/requisition/items/{item_id}", json=update_data, headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["model"] == "Model Update New"
+    assert data["id"] == item_id
+
+def test_update_item_invalid_type(client, auth_headers, created_item_type, created_item_brand):
+    # Create an item.
+    item_data = {
+        "type": created_item_type,
+        "brand": created_item_brand,
+        "model": "Model Invalid Type"
+    }
+    create_response = client.post("/requisition/items/", json=item_data, headers=auth_headers)
+    assert create_response.status_code == 200
+    item_id = create_response.json()["id"]
+
+    # Update with an invalid item type id.
+    update_data = {
+        "type": 9999,
+        "brand": created_item_brand,
+        "model": "Model Invalid Type"
+    }
+    response = client.patch(f"/requisition/items/{item_id}", json=update_data, headers=auth_headers)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Item type not found"
+
+def test_update_item_invalid_brand(client, auth_headers, created_item_type, created_item_brand):
+    # Create an item.
+    item_data = {
+        "type": created_item_type,
+        "brand": created_item_brand,
+        "model": "Model Invalid Brand"
+    }
+    create_response = client.post("/requisition/items/", json=item_data, headers=auth_headers)
+    assert create_response.status_code == 200
+    item_id = create_response.json()["id"]
+
+    # Update with an invalid brand id.
+    update_data = {
+        "type": created_item_type,
+        "brand": 9999,
+        "model": "Model Invalid Brand"
+    }
+    response = client.patch(f"/requisition/items/{item_id}", json=update_data, headers=auth_headers)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Item brand not found"
+
+def test_delete_item(client, auth_headers, created_item_type, created_item_brand):
+    # Create an item.
+    item_data = {
+        "type": created_item_type,
+        "brand": created_item_brand,
+        "model": "Model Delete"
+    }
+    create_response = client.post("/requisition/items/", json=item_data, headers=auth_headers)
+    assert create_response.status_code == 200
+    item_id = create_response.json()["id"]
+
+    # Delete the item.
+    del_response = client.delete(f"/requisition/items/{item_id}", headers=auth_headers)
+    assert del_response.status_code == 200
+    assert f"Item {item_id} successfully deleted" in del_response.json()["message"]
+
+    # Confirm deletion.
+    get_response = client.get(f"/requisition/items/{item_id}", headers=auth_headers)
+    assert get_response.status_code == 404
+
