@@ -1,9 +1,25 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
-from src.models import ItemTypes, ItemTypeCreate, ItemTypeInfo, ItemBrandCreate, ItemBrandInfo, ItemBrands
-from src.db_queries import add_item_type_to_db, get_item_type_by_id, update_item_type_in_db, delete_item_type_from_db, add_item_brand_to_db, get_item_brand_by_id, update_item_brand_in_db, delete_item_brand_from_db
+from src.models import ItemTypes, ItemTypeCreate, ItemTypeInfo, ItemBrandCreate, ItemBrandInfo, ItemBrands, ItemInfo, ItemCreate
+from src.db_queries import (
+    add_item_type_to_db,
+    get_item_type_by_id,
+    update_item_type_in_db,
+    delete_item_type_from_db,
+    add_item_brand_to_db,
+    get_item_brand_by_id,
+    update_item_brand_in_db,
+    delete_item_brand_from_db,
+    create_item_in_db,
+    get_item_by_id,
+    get_items_from_db,
+    update_item_in_db_by_id,
+    delete_item_from_db
+)
 from src.dependency import get_session
 from sqlalchemy.exc import IntegrityError
+from typing import List
+from src.models import ItemCreate, Items
 
 router = APIRouter(prefix="/requisition")
 
@@ -91,3 +107,69 @@ def delete_item_brand(brand_id: int, db: Session = Depends(get_session)):
         return {"message": f"Item brand {brand_id} successfully deleted"}
     except IntegrityError:
         raise HTTPException(status_code=400, detail="Cannot delete item brand as it is referenced by other records")
+
+@router.post("/items/", response_model=ItemInfo)
+def create_item(item: ItemCreate, db: Session = Depends(get_session)):
+    # Verify the item type exists
+    item_type_obj = get_item_type_by_id(db, item.type)
+    if not item_type_obj:
+        raise HTTPException(status_code=404, detail="Item type not found")
+    
+    # Verify the item brand exists if a brand id is provided
+    if item.brand is not None:
+        brand_obj = get_item_brand_by_id(db, item.brand)
+        if not brand_obj:
+            raise HTTPException(status_code=404, detail="Item brand not found")
+    
+    db_item = Items(**item.model_dump())
+    try:
+        return create_item_in_db(db, db_item)
+    except IntegrityError as e:
+        raise HTTPException(status_code=400, detail=f"Error creating item: model already exists")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+@router.get("/items/{item_id}", response_model=ItemInfo)
+def get_item(item_id: int, db: Session = Depends(get_session)):
+    item = get_item_by_id(db, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return item
+
+@router.get("/items/", response_model=List[ItemInfo])
+def list_items(db: Session = Depends(get_session)):
+    return get_items_from_db(db)
+
+@router.patch("/items/{item_id}", response_model=ItemInfo)
+def update_item(item_id: int, item: ItemCreate, db: Session = Depends(get_session)):
+    existing_item = get_item_by_id(db, item_id)
+    if not existing_item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    # Check for valid item type and brand in the update data
+    if item.type:
+        item_type_obj = get_item_type_by_id(db, item.type)
+        if not item_type_obj:
+            raise HTTPException(status_code=404, detail="Item type not found")
+    if item.brand is not None:
+        brand_obj = get_item_brand_by_id(db, item.brand)
+        if not brand_obj:
+            raise HTTPException(status_code=404, detail="Item brand not found")
+    
+    updated_item = Items(id=item_id, **item.model_dump())
+    try:
+        return update_item_in_db_by_id(db, updated_item)
+    except IntegrityError as e:
+        raise HTTPException(status_code=400, detail=f"Error updating item: model already exists")
+    except ValueError as e: 
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+@router.delete("/items/{item_id}")
+def delete_item(item_id: int, db: Session = Depends(get_session)):
+    deleted = delete_item_from_db(db, item_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"message": f"Item {item_id} successfully deleted"}
+

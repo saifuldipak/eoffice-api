@@ -99,3 +99,27 @@ def access_type_data():
         "type": "Read",
         "description": "Read access"
     }
+
+@pytest.fixture
+def item_data():
+    return {
+        "type": 1,
+        "brand": 1,
+        "model": "Model X"
+    }
+
+@pytest.fixture
+def created_item_type(client, auth_headers):
+    """Creates and returns an item type id."""
+    data = {"item_type": "Switch"}
+    response = client.post("/requisition/item-types/", json=data, headers=auth_headers)
+    assert response.status_code == 200
+    return response.json()["id"]
+
+@pytest.fixture
+def created_item_brand(client, auth_headers):
+    """Creates and returns an item brand id."""
+    data = {"brand": "Samsung"}
+    response = client.post("/requisition/item-brands/", json=data, headers=auth_headers)
+    assert response.status_code == 200
+    return response.json()["id"]

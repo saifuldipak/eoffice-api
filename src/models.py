@@ -142,19 +142,22 @@ class ItemBrands(ItemBrandBase, table=True):
 class ItemBrandInfo(ItemBrandBase):
     id: int
 
-""" class Items(SQLModel, table=True):
-    __tablename__ = "items"
-    id: int | None = Field(default=None, primary_key=True)
+class ItemBase(SQLModel):
     type: int = Field(sa_column=Column(Integer, ForeignKey("item_types.id", ondelete="RESTRICT")))
-    brand: int | None = Field(default=None, foreign_key="item_brands.id")
+    brand: int | None = Field(sa_column=Column(Integer, ForeignKey("item_brands.id", ondelete="RESTRICT")))
     model: str | None = Field(default=None, sa_column_kwargs={"unique": True})
 
-class CreateItem(SQLModel):
-    type: str
-    brand: int | None = None
-    model: str | None = None
+class ItemCreate(ItemBase):
+    pass
 
-class RequisitionItems(SQLModel, table=True):
+class Items(ItemBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+
+class ItemInfo(ItemBase):
+    id: int
+
+""" class RequisitionItems(SQLModel, table=True):
+    __tablename__ = "requisition_items"
     id: int | None = Field(default=None, primary_key=True)
     requisition_id: int = Field(foreign_key="requisition.id")
     item_id: int = Field(foreign_key="items.id")

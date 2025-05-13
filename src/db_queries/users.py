@@ -4,6 +4,11 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from passlib.context import CryptContext
 from src.models import ItemTypes, ItemTypeInfo, ItemBrands, ItemBrandInfo
+from src.models import Users, Teams, TeamUpdate, UserCreate, Items, ItemTypes, ItemTypeInfo, ItemBrands, ItemBrandInfo, Items
+from sqlalchemy.exc import IntegrityError
+from datetime import datetime
+from passlib.context import CryptContext
+from src.models import ItemTypes, ItemTypeInfo, ItemBrands, ItemBrandInfo, Items
 from typing import Optional
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -382,3 +387,52 @@ def delete_item_brand_from_db(session: Session, brand_id: int) -> None:
             session.rollback()
             raise e
     return None
+
+def create_item_in_db(session: Session, db_item_data: Items) -> Items:
+    session.add(db_item_data)
+    try:
+        session.commit()
+        session.refresh(db_item_data)
+        return db_item_data
+    except IntegrityError as e:
+        session.rollback()
+        raise e
+
+def get_item_by_id(session: Session, item_id: int) -> Optional[Items]:
+    statement = select(Items).where(Items.id == item_id)
+    return session.exec(statement).first()
+
+def get_items_from_db(session: Session) -> list[Items]:
+    statement = select(Items)
+    return list(session.exec(statement).all())
+
+def update_item_in_db_by_id(session: Session, db_updated_item_data: Items) -> Optional[Items]:
+    db_item = get_item_by_id(session, db_updated_item_data.id)
+    if not db_item:
+        raise ValueError(f"Item with id {db_updated_item_data.id} does not exist.")
+    
+    for key, value in db_updated_item_data.__dict__.items():
+        if key.startswith("_") or key == "id":
+            continue
+        setattr(db_item, key, value)
+    
+    try:
+        session.commit()
+        session.refresh(db_item)
+        return db_item
+    except IntegrityError as e:
+        session.rollback()
+        raise e
+
+def delete_item_from_db(session: Session, item_id: int) -> Optional[Items]:
+    db_item = get_item_by_id(session, item_id)
+    if db_item:
+        session.delete(db_item)
+        try:
+            session.commit()
+            return db_item
+        except IntegrityError as e:
+            session.rollback()
+            raise e
+    return None
+
