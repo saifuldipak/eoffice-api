@@ -1,21 +1,24 @@
 from sqlmodel import Session, select
-from src.models import Users
+from src.models import Users, Teams, TeamUpdate, UserCreate
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
+from passlib.context import CryptContext
 
-def create_user_in_db(session: Session, user_data):
-    hashed_password = user_data.password
-    db_user = Users(
-        username=user_data.username,
-        password=hashed_password,
-        first_name=user_data.first_name,
-        last_name=user_data.last_name,
-        email=user_data.email,
-        role=user_data.role,
-        is_active=True,
-        created_at=datetime.now(),
-        updated_at=datetime.now()
-    )
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_user_in_db(session: Session, user_data: UserCreate) -> Users:
+    db_user = Users(**user_data.model_dump())
+    db_user.password = hash_password(user_data.password)
+    db_user.is_active = True
+    db_user.created_at = datetime.now()
+    db_user.updated_at = datetime.now()
+
     session.add(db_user)
     try:
         session.commit()
@@ -37,22 +40,11 @@ def delete_user_from_db(session: Session, username: str):
         session.commit()
     return db_user
 
-def update_user_in_db(session: Session, username: str, updated_data: dict):
-    """
-    Update user details based on the provided username and updated data.
-
-    Args:
-        session (Session): The database session.
-        username (str): The username of the user to update.
-        updated_data (dict): A dictionary containing the fields to update.
-
-    Returns:
-        Users: The updated user object, or None if the user does not exist.
-    """
+def update_user_in_db(session: Session, username: str, updated_data: dict) -> Users:
     statement = select(Users).where(Users.username == username)
     db_user = session.exec(statement).first()
     if not db_user:
-        return None
+        raise ValueError(f"User with username {username} not found")
 
     for key, value in updated_data.items():
         if hasattr(db_user, key):
@@ -64,5 +56,61 @@ def update_user_in_db(session: Session, username: str, updated_data: dict):
         session.refresh(db_user)
         return db_user
     except IntegrityError:
+        #logger.error(f"{str(e)}")
         session.rollback()
         raise
+    except Exception as e:
+        #logger.error(f"{str(e)}")
+        session.rollback()
+        raise e
+
+# --- CRUD operations for Teams ---
+
+def create_team_in_db(session: Session, db_team_data: Teams):    
+    session.add(db_team_data)
+    try:
+        session.commit()
+        session.refresh(db_team_data)
+        return db_team_data
+    except IntegrityError:
+        session.rollback()
+        raise
+
+def get_team_by_name_from_db(session: Session, team_name: str) -> Teams | None:
+    statement = select(Teams).where(Teams.name == team_name)
+    return session.exec(statement).first()
+
+def update_team_in_db(session: Session, team_update_data: TeamUpdate) -> Teams | None:
+    statement = select(Teams).where(Teams.name == team_update_data.name)
+    db_team = session.exec(statement).first()
+    if not db_team:
+        raise ValueError(f"Team with name {team_update_data.name} not found")
+
+    db_team.description = team_update_data.description
+
+    try:
+        session.commit()
+        session.refresh(db_team)
+        return db_team
+    except Exception as e:
+        session.rollback()
+        raise e 
+
+def delete_team_from_db(session: Session, team_name: str):
+    statement = select(Teams).where(Teams.name == team_name)
+    db_team = session.exec(statement).first()
+    if not db_team:
+        raise ValueError(f"Team with name {team_name} not found")
+    
+    try:
+        session.delete(db_team)
+        session.commit()
+    except IntegrityError as e:
+        session.rollback()
+        raise e
+    
+    return db_team
+
+def get_team_list_from_db(session: Session):
+    statement = select(Teams)
+    return session.exec(statement).all()

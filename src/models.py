@@ -1,5 +1,5 @@
 import os
-from sqlmodel import SQLModel, Field, create_engine, Session
+from sqlmodel import SQLModel, Field, create_engine, Session, Column, ForeignKey
 from datetime import datetime
 from sqlmodel import create_engine
 import bcrypt
@@ -9,6 +9,23 @@ from dotenv import load_dotenv  # Import dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+
+class TeamBase(SQLModel):
+    name: str = Field(sa_column_kwargs={"unique": True})
+    description: str | None = None
+
+class TeamCreate(TeamBase):
+    pass
+
+class Teams(TeamBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)    
+
+class TeamInfo(TeamBase):
+    id: int
+
+class TeamUpdate(SQLModel):
+    name: str 
+    description: str 
 
 class UserRole(str, Enum):
     USER_ADMIN = "user_admin"
@@ -21,6 +38,7 @@ class UserBase(SQLModel):
     last_name: str
     email: str = Field(sa_column_kwargs={"unique": True})
     role: UserRole
+    team_id: int | None = Field(default=None, sa_column=Column(ForeignKey("teams.id", ondelete="RESTRICT")))
 
 class UserCreate(UserBase):
     password: str
@@ -46,7 +64,8 @@ class UserUpdate(SQLModel):
     role: UserRole | None = None
     password: str | None = None
     is_active: bool | None = None
-    
+    team_id: int | None = None
+
 def create_db_connection():
     # Load DATABASE_URL from .env file, default to sqlite if not set
     db_url = os.getenv("DATABASE_URL", "sqlite:///./eoffice.db")
