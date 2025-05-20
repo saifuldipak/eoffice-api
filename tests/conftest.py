@@ -2,65 +2,41 @@ import pytest
 import json
 import os
 from fastapi.testclient import TestClient
-from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel import SQLModel
 from src.main import app
-from src.dependency import get_session
-from src.models import Users
-from datetime import datetime
-from src.auth import get_password_hash
+from src.models import create_db_connection, create_admin_user
 
-# Create a test database engine
-test_engine = create_engine("sqlite:///./test.db", connect_args={"check_same_thread": False})
-
-# Override the get_session dependency to use the test database
-def override_get_session():
-    with Session(test_engine) as session:
-        yield session
-
-app.dependency_overrides[get_session] = override_get_session
-
-TOKEN_FILE = "test_token.json"
-ADMIN_USER = "admin"
-ADMIN_PASSWORD = "adminpassword"
-ROLE = "user_admin"
-FIRST_NAME = "Admin"
-LAST_NAME = "User"
-ADMIN_EMAIL = "admin@example.com"
-
-def create_admin_user():
-    """Create an admin user in the database directly"""
-    session = next(override_get_session())
-    admin = Users(
-        username=ADMIN_USER,
-        password=get_password_hash(ADMIN_PASSWORD),
-        first_name=FIRST_NAME,
-        last_name=LAST_NAME,
-        email=ADMIN_EMAIL,
-        role=ROLE,
-        is_active=True,
-        created_at=datetime.now(),
-        updated_at=datetime.now()
-    )
-    session.add(admin)
-    session.commit()
-    session.refresh(admin)
-    return admin
+@pytest.fixture(name="engine")
+def engine_fixture(monkeypatch):
+    # Override the DATABASE_URL to use the test database file
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///./tests/test_eoffice.db")
+    engine = create_db_connection()
+    yield engine
 
 @pytest.fixture(name="client")
-def client_fixture():
-    SQLModel.metadata.drop_all(test_engine)
-    SQLModel.metadata.create_all(test_engine)
-    create_admin_user()
+def client_fixture(engine):
+    SQLModel.metadata.drop_all(engine)
+    SQLModel.metadata.create_all(engine)
     with TestClient(app) as client:
         yield client
-    SQLModel.metadata.drop_all(test_engine)
 
+    SQLModel.metadata.drop_all(engine)
+
+@pytest.fixture(name="admin_user")
+def admin_user_fixture(engine):
+    username, password = create_admin_user(engine)
+    return {
+        "username": username, 
+        "password": password
+    }
+
+TOKEN_FILE = "test_token.json"
 @pytest.fixture(autouse=True)
-def auth_token(client):
+def auth_token(client, admin_user):
     """Get token via API and save to file"""
     login_data = {
-        "username": f"{ADMIN_USER}",
-        "password": f"{ADMIN_PASSWORD}"
+        "username": admin_user["username"],
+        "password": admin_user["password"]
     }
     response = client.post("/auth/token", data=login_data)
     assert response.status_code == 200
@@ -90,14 +66,24 @@ def cleanup():
         os.remove(TOKEN_FILE)
 
 @pytest.fixture
-def user_data():
+def role_id(client, auth_headers):
+    role_data = {
+        "name": "default_role",
+        "description": "Default role for testing"
+    }
+    response = client.post("/users/roles", json=role_data, headers=auth_headers)
+    assert response.status_code == 200
+    return response.json()["id"]
+
+@pytest.fixture
+def user_data(role_id):
     return {
         "username": "testuser",
         "password": "testpassword",
         "first_name": "Test",
         "last_name": "User",
         "email": "testuser@example.com",
-        "role": "user_admin"
+        "role_id": role_id  # now using role_id (an integer) as required by the new model
     }
 
 @pytest.fixture

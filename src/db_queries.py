@@ -1,5 +1,5 @@
 from sqlmodel import Session, select
-from src.models import Users, Teams, TeamUpdate, UserCreate
+from src.models import Users, Teams, TeamUpdate, UserCreate, RoleCreate, Roles, RolePermissions, RolePermissionCreate
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from passlib.context import CryptContext
@@ -29,7 +29,7 @@ def create_user_in_db(session: Session, user_data: UserCreate) -> Users:
         raise
 
 def get_users_from_db(session: Session, username: str):
-    statement = select(Users).where(Users.username.like(f"{username}%"))
+    statement = select(Users).where(Users.username.ilike(f"{username}%")) # type: ignore
     return session.exec(statement).all()
 
 def delete_user_from_db(session: Session, username: str):
@@ -114,3 +114,113 @@ def delete_team_from_db(session: Session, team_name: str):
 def get_team_list_from_db(session: Session):
     statement = select(Teams)
     return session.exec(statement).all()
+
+def create_role_in_db(session: Session, role_data: RoleCreate) -> Roles:
+    role = Roles(name=role_data.name, description=role_data.description)
+    session.add(role)
+    try:
+        session.commit()
+        session.refresh(role)
+        return role
+    except IntegrityError:
+        session.rollback()
+        raise
+    except Exception:
+        session.rollback()
+        raise
+
+def get_role_by_name_from_db(session: Session, name: str) -> Roles | None:
+    statement = select(Roles).where(Roles.name == name)
+    return session.exec(statement).first()
+
+def get_all_roles(session: Session) -> list[Roles] | None:
+    statement = select(Roles)
+    return list(session.exec(statement).all())
+
+def update_role_in_db(session: Session, role_id: int, update_data: dict) -> Roles | None:
+    role = session.get(Roles, role_id)
+    if not role:
+        raise ValueError(f"Role with ID {role_id} not found")
+ 
+    for key, value in update_data.items():
+         if hasattr(role, key):
+             setattr(role, key, value)
+    
+    try:
+         session.commit()
+         session.refresh(role)
+         return role
+    except IntegrityError:
+         session.rollback()
+         raise
+    except Exception:
+         session.rollback()
+         raise
+
+def delete_role_from_db(session: Session, role_id: int) -> str:
+    role = session.get(Roles, role_id)
+    if not role:
+        raise ValueError(f"Role with ID {role_id} not found")
+    
+    try:
+        session.delete(role)
+        session.commit()
+        return f"Role with ID {role_id} deleted successfully"
+    except IntegrityError:
+        session.rollback()
+        raise
+    except Exception:
+        session.rollback()
+        raise
+
+def create_role_permission_in_db(session: Session, role_permission_data: RolePermissionCreate) -> RolePermissions:
+    # Verify the role exists
+    role = session.get(Roles, role_permission_data.role_id)
+    if not role:
+        raise ValueError(f"Role with ID {role_permission_data.role_id} not found")
+
+    # Check for duplicate permission entry
+    stmt = select(RolePermissions).where(
+        RolePermissions.role_id == role_permission_data.role_id,
+        RolePermissions.permission == role_permission_data.permission
+    )
+    existing_permission = session.exec(stmt).first()
+    if existing_permission:
+        raise ValueError(
+            f"Role permission with Role ID {role_permission_data.role_id} and Permission {role_permission_data.permission} already exists"
+        )
+
+    role_permission_db = RolePermissions(**role_permission_data.model_dump())
+    session.add(role_permission_db)
+    try:
+        session.commit()
+        session.refresh(role_permission_db)
+        return role_permission_db
+    except Exception:
+        session.rollback()
+        raise
+
+def delete_role_permission_from_db(session: Session, role_id: int, permission: str) -> None:
+    stmt = select(RolePermissions).where(
+        RolePermissions.role_id == role_id,
+        RolePermissions.permission == permission
+    )
+    role_permission_in_db = session.exec(stmt).first()
+    if not role_permission_in_db:
+        raise ValueError(
+            f"Role permission {permission} for Role ID {role_id} not found"
+        )
+    try:
+        session.delete(role_permission_in_db)
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+
+def get_all_role_permissions(session: Session) -> list[RolePermissions]:
+    stmt = select(RolePermissions)
+    return list(session.exec(stmt).all())  # Explicitly convert to list
+
+def get_role_permissions_by_role(session: Session, role_id: int) -> list[RolePermissions]:
+    stmt = select(RolePermissions).where(RolePermissions.role_id == role_id)
+    return list(session.exec(stmt).all())  # Explicitly convert to list
