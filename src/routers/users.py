@@ -4,12 +4,7 @@ import logging
 from sqlmodel import Session, select
 from src.dependency import get_session
 from src.auth import check_manage_user_permission
-from src.db_queries import (
-    create_user_in_db, get_users_from_db, delete_user_from_db, update_user_in_db,
-    create_role_in_db, get_all_roles, update_role_in_db, delete_role_from_db,
-    create_role_permission_in_db, delete_role_permission_from_db, get_all_role_permissions, get_role_permissions_by_role,
-    create_team_in_db, get_team_by_name_from_db, update_team_in_db, delete_team_from_db, get_team_list_from_db
-)
+from src.db_queries.users import *
 from src.models import UserCreate, UserInfo, UserUpdate, RoleCreate, RoleInfo, Roles, RolePermissions, RolePermissionCreate, TeamCreate, TeamInfo, TeamUpdate, Teams
 from sqlalchemy.exc import IntegrityError
 
