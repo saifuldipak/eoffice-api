@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
-from src.models import ItemTypes, ItemTypeCreate, ItemTypeInfo, ItemBrandCreate, ItemBrandInfo, ItemBrands, ItemInfo, ItemCreate
+from src.models import ItemTypes, ItemTypeCreate, ItemTypeInfo, ItemBrandCreate, ItemBrandInfo, ItemBrands, ItemInfo, ItemCreate, Requisitions
 from src.db_queries import (
     add_item_type_to_db,
     get_item_type_by_id,
@@ -14,14 +14,19 @@ from src.db_queries import (
     get_item_by_id,
     get_items_from_db,
     update_item_in_db_by_id,
-    delete_item_from_db
+    delete_item_from_db,
+    create_requisition_in_db,
+    get_requisition_by_id,
+    get_all_requisitions,
+    update_requisition_in_db,
+    delete_requisition_from_db
 )
 from src.dependency import get_session
 from sqlalchemy.exc import IntegrityError
 from typing import List
 from src.models import ItemCreate, Items
 
-router = APIRouter(prefix="/requisition")
+router = APIRouter(prefix="/requisition", tags=["requisition"], dependencies=[Depends(get_session)])
 
 @router.post("/item-types/", response_model=ItemTypeInfo)
 def create_item_type(item_type_data: ItemTypeCreate, db: Session = Depends(get_session)):
@@ -172,4 +177,41 @@ def delete_item(item_id: int, db: Session = Depends(get_session)):
     if not deleted:
         raise HTTPException(status_code=404, detail="Item not found")
     return {"message": f"Item {item_id} successfully deleted"}
+
+@router.post("/requisitions/", response_model=Requisitions)
+def create_requisition(req: Requisitions, db: Session = Depends(get_session)):
+    try:
+        return create_requisition_in_db(db, req)
+    except IntegrityError:
+        raise HTTPException(status_code=400, detail="Failed to create requisition due to integrity error")
+
+@router.get("/requisitions/{req_id}", response_model=Requisitions)
+def read_requisition(req_id: int, db: Session = Depends(get_session)):
+    req = get_requisition_by_id(db, req_id)
+    if not req:
+        raise HTTPException(status_code=404, detail="Requisition not found")
+    return req
+
+@router.get("/requisitions/", response_model=List[Requisitions])
+def list_requisitions(db: Session = Depends(get_session)):
+    return get_all_requisitions(db)
+
+@router.patch("/requisitions/{req_id}", response_model=Requisitions)
+def update_requisition(req_id: int, req_update: Requisitions, db: Session = Depends(get_session)):
+    update_data = req_update.model_dump(exclude_unset=True)
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    try:
+        return update_requisition_in_db(db, req_id, update_data)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except IntegrityError:
+        raise HTTPException(status_code=400, detail="Update failed due to integrity constraints")
+
+@router.delete("/requisitions/{req_id}")
+def delete_requisition(req_id: int, db: Session = Depends(get_session)):
+    req = delete_requisition_from_db(db, req_id)
+    if not req:
+        raise HTTPException(status_code=404, detail="Requisition not found")
+    return {"message": f"Requisition {req_id} successfully deleted"}
 

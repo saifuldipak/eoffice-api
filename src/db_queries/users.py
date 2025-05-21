@@ -1,10 +1,5 @@
 from sqlmodel import Session, select
-from src.models import Users, Teams, TeamUpdate, UserCreate, RoleCreate, Roles, RolePermissions, RolePermissionCreate, Items, ItemTypes
-from sqlalchemy.exc import IntegrityError
-from datetime import datetime
-from passlib.context import CryptContext
-from src.models import ItemTypes, ItemTypeInfo, ItemBrands, ItemBrandInfo
-from src.models import Users, Teams, TeamUpdate, UserCreate, Items, ItemTypes, ItemTypeInfo, ItemBrands, ItemBrandInfo, Items
+from src.models import Users, Teams, TeamUpdate, UserCreate, Items, ItemTypes, ItemTypeInfo, ItemBrands, ItemBrandInfo, Items, Requisitions
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from passlib.context import CryptContext
@@ -407,6 +402,8 @@ def get_items_from_db(session: Session) -> list[Items]:
     return list(session.exec(statement).all())
 
 def update_item_in_db_by_id(session: Session, db_updated_item_data: Items) -> Optional[Items]:
+    if db_updated_item_data.id is None:
+        raise ValueError("Item id must not be None.")
     db_item = get_item_by_id(session, db_updated_item_data.id)
     if not db_item:
         raise ValueError(f"Item with id {db_updated_item_data.id} does not exist.")
@@ -431,6 +428,51 @@ def delete_item_from_db(session: Session, item_id: int) -> Optional[Items]:
         try:
             session.commit()
             return db_item
+        except IntegrityError as e:
+            session.rollback()
+            raise e
+    return None
+
+def create_requisition_in_db(session: Session, req_data: Requisitions) -> Requisitions:
+    session.add(req_data)
+    try:
+        session.commit()
+        session.refresh(req_data)
+        return req_data
+    except IntegrityError as e:
+        session.rollback()
+        raise e
+
+def get_requisition_by_id(session: Session, req_id: int) -> Optional[Requisitions]:
+    statement = select(Requisitions).where(Requisitions.id == req_id)
+    return session.exec(statement).first()
+
+def get_all_requisitions(session: Session) -> list[Requisitions]:
+    statement = select(Requisitions)
+    return session.exec(statement).all()
+
+def update_requisition_in_db(session: Session, req_id: int, updated_data: dict) -> Requisitions:
+    req = get_requisition_by_id(session, req_id)
+    if not req:
+        raise ValueError(f"Requisition with id {req_id} not found")
+    for key, value in updated_data.items():
+        if hasattr(req, key):
+            setattr(req, key, value)
+    try:
+        session.commit()
+        session.refresh(req)
+        return req
+    except IntegrityError as e:
+        session.rollback()
+        raise e
+
+def delete_requisition_from_db(session: Session, req_id: int) -> Optional[Requisitions]:
+    req = get_requisition_by_id(session, req_id)
+    if req:
+        session.delete(req)
+        try:
+            session.commit()
+            return req
         except IntegrityError as e:
             session.rollback()
             raise e

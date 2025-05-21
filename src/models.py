@@ -116,6 +116,7 @@ class Requisitions(SQLModel, table=True):
     approval_date: datetime | None = None
     delivery_date: datetime | None = None """
 
+
 class ItemTypeBase(SQLModel):
     item_type: str
 
@@ -156,15 +157,37 @@ class Items(ItemBase, table=True):
 class ItemInfo(ItemBase):
     id: int
 
-""" class RequisitionItems(SQLModel, table=True):
+class RequisitionStatus(str, Enum):
+    SUBMITTED = "submitted"
+    APPROVED = "approved"
+    DELIVERED = "delivered"    
+
+class RequisitionUnit(str, Enum):
+    PIECE = "piece"
+    PAIR = "pair"
+    METER = "meter"
+    GRAM = "gram"
+
+class Requisitions(SQLModel, table=True):
+    __tablename__ = "requisition"
+    id: int | None = Field(default=None, primary_key=True)
+    status: RequisitionStatus
+    submission_date: datetime
+    approval_date: datetime | None = None
+    delivery_date: datetime | None = None
+    created_by: int = Field(foreign_key="users.id")
+    approved_by: int | None = Field(foreign_key="users.id")
+    delivered_by: int | None = Field(foreign_key="users.id")
+
+class RequisitionItems(SQLModel, table=True):
     __tablename__ = "requisition_items"
     id: int | None = Field(default=None, primary_key=True)
-    requisition_id: int = Field(foreign_key="requisition.id")
+    requisition_id: int = Field(sa_column=Column(Integer, ForeignKey("requisition.id", ondelete="RESTRICT")))
     item_id: int = Field(foreign_key="items.id")
     unit: RequisitionUnit
     quantity: int
     delivery_date: datetime | None = None
-    delivered_by: int | None = Field(foreign_key="users.id") """
+    delivered_by: int | None = Field(foreign_key="users.id")
 
 # Load environment variables from .env file
 load_dotenv(override=True)
