@@ -97,25 +97,6 @@ class UserUpdate(SQLModel):
     password: str | None = None
     is_active: bool | None = None
     team_id: int | None = None
-    
-""" class RequisitionStatus(str, Enum):
-    SUBMITTED = "submitted"
-    APPROVED = "approved"
-    DELIVERED = "delivered"    
-
-class RequisitionUnit(str, Enum):
-    PIECE = "piece"
-    PAIR = "pair"
-    METER = "meter"
-    GRAM = "gram"
-
-class Requisitions(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    status: RequisitionStatus
-    submission_date: datetime
-    approval_date: datetime | None = None
-    delivery_date: datetime | None = None """
-
 
 class ItemTypeBase(SQLModel):
     item_type: str
