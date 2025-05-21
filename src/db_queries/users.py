@@ -1,5 +1,5 @@
 from sqlmodel import Session, select
-from src.models import Users, Teams, TeamUpdate, UserCreate, Items, ItemTypes, ItemTypeInfo, ItemBrands, ItemBrandInfo, Items, Requisitions
+from src.models import Users, Teams, TeamUpdate, UserCreate, Items, ItemTypes, ItemTypeInfo, ItemBrands, ItemBrandInfo, Items, Requisitions, Roles, RoleCreate, RolePermissionCreate, RolePermissions
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from passlib.context import CryptContext
@@ -449,7 +449,7 @@ def get_requisition_by_id(session: Session, req_id: int) -> Optional[Requisition
 
 def get_all_requisitions(session: Session) -> list[Requisitions]:
     statement = select(Requisitions)
-    return session.exec(statement).all()
+    return list(session.exec(statement).all())
 
 def update_requisition_in_db(session: Session, req_id: int, updated_data: dict) -> Requisitions:
     req = get_requisition_by_id(session, req_id)
