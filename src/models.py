@@ -39,6 +39,8 @@ class UserAction(str, Enum):
     MANAGE_USER = "manage_user"
     MANAGE_TICKET = "manage_ticket"
     UPDATE_TICKET = "update_ticket"
+    MANAGE_REQUISITION_ITEM = "manage_requisition_item"
+    MANAGE_REQUISITION = "manage_requisition"
 
 class RoleBase(SQLModel):
     name: str = Field(sa_column_kwargs={"unique": True})
@@ -143,6 +145,10 @@ class RequisitionStatus(str, Enum):
     APPROVED = "approved"
     DELIVERED = "delivered"    
 
+class RequisitionStatusUpdate(str, Enum):
+    APPROVED = "approved"
+    DELIVERED = "delivered"
+
 class RequisitionUnit(str, Enum):
     PIECE = "piece"
     PAIR = "pair"
@@ -150,7 +156,6 @@ class RequisitionUnit(str, Enum):
     GRAM = "gram"
 
 class Requisitions(SQLModel, table=True):
-    __tablename__ = "requisition"
     id: int | None = Field(default=None, primary_key=True)
     status: RequisitionStatus
     submission_date: datetime
@@ -161,7 +166,6 @@ class Requisitions(SQLModel, table=True):
     delivered_by: int | None = Field(foreign_key="users.id")
 
 class RequisitionItems(SQLModel, table=True):
-    __tablename__ = "requisition_items"
     id: int | None = Field(default=None, primary_key=True)
     requisition_id: int = Field(sa_column=Column(Integer, ForeignKey("requisition.id", ondelete="RESTRICT")))
     item_id: int = Field(foreign_key="items.id")
