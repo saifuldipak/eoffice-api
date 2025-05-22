@@ -1,6 +1,6 @@
 from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
-from src.models import ItemTypes, ItemTypeInfo,ItemBrands, ItemBrandInfo, Items, ItemInfo, Requisitions, RequisitionStatus
+from src.models import ItemTypes, ItemTypeInfo,ItemBrands, ItemBrandInfo, Items, Requisitions, RequisitionStatus, RequisitionStatusUpdate
 from datetime import datetime
 
 def add_item_type_to_db(session: Session, item_type: ItemTypes) -> ItemTypes:
@@ -214,7 +214,7 @@ def get_all_requisitions(db: Session) -> list[Requisitions] | None:
     except Exception:
         raise
 
-def update_requisition_in_db(db: Session, requisition_id: int, requisition_status: str, user_id: int) -> Requisitions:
+def update_requisition_in_db(db: Session, requisition_id: int, requisition_status: RequisitionStatusUpdate, user_id: int) -> Requisitions:
     statement = select(Requisitions).where(Requisitions.id == requisition_id)
     requisition_db = db.exec(statement).first()
     if not requisition_db:
