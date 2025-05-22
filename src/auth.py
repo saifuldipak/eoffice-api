@@ -56,7 +56,7 @@ async def login_for_access_token(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-async def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)):
+async def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)) -> Users:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="User not found or has no role permissions",
@@ -74,16 +74,43 @@ async def get_current_user(token: str = Depends(oauth2_scheme), session: Session
     if user is None:
         raise credentials_exception
     
+    return user
+
+
+async def get_role_permissions(user: Users = Depends(get_current_user), session: Session = Depends(get_session)) -> list[RolePermissions]:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="User not found or has no role permissions",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    if user.role_id is None:
+        raise credentials_exception
+    
     role_permissions = session.exec(select(RolePermissions).where(RolePermissions.role_id == user.role_id)).all()
     if role_permissions is None:
         raise credentials_exception
     
-    return role_permissions 
+    return list(role_permissions) 
 
-async def check_manage_user_permission(current_user_role_permissions: list[RolePermissions] = Depends(get_current_user)) -> bool:
+async def check_manage_user_permission(current_user_role_permissions: list[RolePermissions] = Depends(get_role_permissions)) -> bool:
     has_permission = False
     for permission in current_user_role_permissions:
         if permission.permission == UserAction.MANAGE_USER:
+            has_permission = True
+            break
+    
+    if not has_permission:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have the necessary permissions"
+        )
+    
+    return has_permission
+
+def check_authorization(access_permission: UserAction, role_permissions: list[RolePermissions] = Depends(get_role_permissions)) -> bool:
+    has_permission = False
+    for permission in role_permissions:
+        if permission == access_permission:
             has_permission = True
             break
     
