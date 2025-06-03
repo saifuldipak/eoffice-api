@@ -3,9 +3,9 @@ from typing import List
 import logging
 from sqlmodel import Session, select
 from src.dependency import get_session
-from src.auth import check_manage_user_permission
+from src.auth import check_authorization
 from src.db_queries.users import *
-from src.models import UserCreate, UserInfo, UserUpdate, RoleCreate, RoleInfo, Roles, RolePermissions, RolePermissionCreate, TeamCreate, TeamInfo, TeamUpdate, Teams
+from src.models import UserCreate, UserInfo, UserUpdate, RoleCreate, RoleInfo, Roles, RolePermissions, RolePermissionCreate, TeamCreate, TeamInfo, TeamUpdate, Teams, UserAction
 from sqlalchemy.exc import IntegrityError
 
 # Configure logger
@@ -18,7 +18,7 @@ logger.addHandler(handler)
 router = APIRouter(
     prefix="/users",
     tags=["users"],
-    dependencies=[Depends(check_manage_user_permission)]
+    dependencies=[Depends(lambda: check_authorization(UserAction.MANAGE_USER))]
 )
 
 @router.post("/", response_model=UserInfo)

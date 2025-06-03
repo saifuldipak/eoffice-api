@@ -1,9 +1,8 @@
 import os
+import bcrypt
 from sqlmodel import SQLModel, Field, create_engine, Session, text, Column, Integer, ForeignKey
 from datetime import datetime
-from sqlmodel import create_engine
-import bcrypt
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, Column, ForeignKey, Integer
 from enum import Enum
 from dotenv import load_dotenv, find_dotenv  # Import dotenv
 
@@ -40,6 +39,9 @@ class UserAction(str, Enum):
     MANAGE_USER = "manage_user"
     MANAGE_TICKET = "manage_ticket"
     UPDATE_TICKET = "update_ticket"
+    SUBMIT_REQUISITION = "submit_requisition"
+    APPROVE_REQUISITION = "approve_requisition"
+    DELIVER_REQUISITION = "deliver_requisition"
 
 class RoleBase(SQLModel):
     name: str = Field(sa_column_kwargs={"unique": True})
@@ -71,7 +73,7 @@ class UserBase(SQLModel):
     last_name: str
     email: str = Field(sa_column_kwargs={"unique": True})
     team_id: int | None = Field(default=None, sa_column=Column(ForeignKey("teams.id", ondelete="RESTRICT")))
-    role_id: int | None = Field(foreign_key="roles.id", ondelete="RESTRICT")
+    role_id: int | None = Field(default=None, foreign_key="roles.id", ondelete="RESTRICT")
 
 class UserCreate(UserBase):
     password: str
@@ -99,6 +101,82 @@ class UserUpdate(SQLModel):
     is_active: bool | None = None
     team_id: int | None = None
 
+class ItemTypeBase(SQLModel):
+    item_type: str
+
+class ItemTypeCreate(ItemTypeBase):
+    pass
+
+class ItemTypes(ItemTypeBase, table=True):
+    __tablename__ = "item_types"  # type: ignore
+    id: int | None = Field(default=None, primary_key=True) 
+    __table_args__ = (UniqueConstraint("item_type", name="uix_item_type"),)
+
+class ItemTypeInfo(ItemTypeBase):
+    id: int
+
+class ItemBrandBase(SQLModel):
+    brand: str
+
+class ItemBrandCreate(ItemBrandBase):
+    pass
+
+class ItemBrands(ItemBrandBase, table=True):
+    __tablename__ = "item_brands" # type: ignore
+    id: int | None = Field(default=None, primary_key=True)
+    __table_args__ = (UniqueConstraint("brand", name="uix_brand"),)
+
+class ItemBrandInfo(ItemBrandBase):
+    id: int
+
+class ItemBase(SQLModel):
+    type: int = Field(sa_column=Column(Integer, ForeignKey("item_types.id", ondelete="RESTRICT")))
+    brand: int | None = Field(sa_column=Column(Integer, ForeignKey("item_brands.id", ondelete="RESTRICT")))
+    model: str | None = Field(default=None, sa_column_kwargs={"unique": True})
+
+class ItemCreate(ItemBase):
+    pass
+
+class Items(ItemBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+
+class ItemInfo(ItemBase):
+    id: int
+
+class RequisitionStatus(str, Enum):
+    SUBMITTED = "submitted"
+    APPROVED = "approved"
+    DELIVERED = "delivered"    
+
+class RequisitionStatusUpdate(str, Enum):
+    APPROVED = "approved"
+    DELIVERED = "delivered"
+
+class RequisitionUnit(str, Enum):
+    PIECE = "piece"
+    PAIR = "pair"
+    METER = "meter"
+    GRAM = "gram"
+
+class RequisitionCreate(SQLModel):
+    item_id: int = Field(sa_column=Column(Integer, ForeignKey("items.id", ondelete="RESTRICT")))
+    unit: RequisitionUnit
+    quantity: int = Field(gt=0, description="Quantity must be a positive integer greater than 0")
+    remark: str | None = None
+
+class Requisitions(RequisitionCreate, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    status: RequisitionStatus
+    created_at: datetime
+    approved_at: datetime | None = None
+    delivered_at: datetime | None = None
+    created_by: int = Field(foreign_key="users.id")
+    approved_by: int | None = Field(default=None, foreign_key="users.id")
+    delivered_by: int | None = Field(default=None, foreign_key="users.id")
+
+# Load environment variables from .env file
+load_dotenv(override=True)
+
 def create_db_connection():
     # Load DATABASE_URL from .env file, default to sqlite if not set
     db_url = os.getenv("DATABASE_URL") or "sqlite:///./eoffice.db"
@@ -108,8 +186,8 @@ def create_db_connection():
     
     return engine
 
-def create_admin_user(engine):
-    role = Roles(name='user_admin', description='Add, update, delete users and roles')
+def create_user(engine, role_name: str, role_permission: UserAction, user_data: UserCreate) -> tuple[str, str]:
+    role = Roles(name=role_name, description='Add, update, delete users and roles')
     with Session(engine) as session:
         try:
             session.add(role)
@@ -124,7 +202,7 @@ def create_admin_user(engine):
     if role.id is None:
         raise ValueError("Role ID is None. Cannot create RolePermissions without a valid role ID.")
     
-    role_permissions = RolePermissions(role_id=role.id, permission=UserAction.MANAGE_USER)
+    role_permissions = RolePermissions(role_id=role.id, permission=role_permission)
     with Session(engine) as session:
         try:
             session.add(role_permissions)
@@ -136,15 +214,13 @@ def create_admin_user(engine):
             session.rollback()
             exit(1)
 
-    username = 'admin'
-    password = 'admin'
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    hashed_password = bcrypt.hashpw(user_data.password.encode('utf-8'), bcrypt.gensalt())
     user = Users(
-        username=username,
+        username=user_data.username,
         password=hashed_password.decode('utf-8'),
-        first_name='Admin',
-        last_name='User',
-        email='admin@eoffice',
+        first_name=user_data.first_name,
+        last_name=user_data.last_name,
+        email=f'{user_data.username}@eoffice',
         is_active=True,
         role_id=role.id,
         created_at=datetime.now(),
@@ -156,12 +232,14 @@ def create_admin_user(engine):
             session.add(user)
             session.commit()
             session.refresh(user)
-            print('Admin user created successfully')
+            print('User created successfully')
         except Exception as e:
-            print(f"Error creating admin user: {e}")
+            print(f"Error creating user: {e}")
             session.rollback()
             exit(1)
-        return username, password
+    
+    return user_data.username, user_data.password
+
 
 if __name__ == '__main__':
     engine = create_db_connection()
@@ -175,10 +253,17 @@ if __name__ == '__main__':
         exit(1)
 
     try:
-        create_admin_user(engine)
+        user_data = UserCreate(
+            username='admin',
+            password='admin',            
+            first_name='Admin',
+            last_name='User',
+            email='admin@eoffice'
+        )
+        create_user(engine, role_name='user_admin', role_permission=UserAction.MANAGE_USER, user_data=user_data)
         print('Admin user created successfully')
     except Exception as e:
         print(f"Error creating admin user: {e}")
         exit(1)
-    
-        
+
+
