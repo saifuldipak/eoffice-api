@@ -1,7 +1,7 @@
 [project]
 name = "eoffice"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.2.0"
+description = "E-Office: A FastAPI-based Electronic Office Management System Backend"
 readme = "README.md"
 authors = [
     { name = "Saiful Islam Dipak", email = "saiful.kbtel@gmail.com" }
